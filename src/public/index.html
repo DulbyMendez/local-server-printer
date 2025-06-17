@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Servidor de Impresión</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .printer-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            display: block;
+            margin: 20px auto;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+        .nav {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .nav a {
+            color: #666;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        .nav a:hover {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖨️ Servidor de Impresión</h1>
+        <div class="printer-info" id="printerInfo">
+            Cargando información de la impresora...
+        </div>
+        <textarea id="printContent" placeholder="Escribe el texto que deseas imprimir..."></textarea>
+        <button onclick="print()">Imprimir</button>
+        <div id="status"></div>
+        <div class="nav">
+            <a href="/config.html">Cambiar Configuración</a>
+        </div>
+    </div>
+
+    <script>
+        // Obtener la URL base del servidor automáticamente
+        const SERVER_URL = window.location.protocol + '//' + window.location.hostname + ':3001';
+
+        // Cargar información de la impresora
+        async function loadPrinterInfo() {
+            try {
+                const response = await fetch(`${SERVER_URL}/config`);
+                const data = await response.json();
+                const printerId = Object.keys(data.printers)[0];
+                const printer = data.printers[printerId];
+                
+                document.getElementById('printerInfo').innerHTML = `
+                    <strong>Impresora:</strong> ${printerId}<br>
+                    <strong>IP:</strong> ${printer.ip}<br>
+                    <strong>Puerto:</strong> ${printer.port}
+                `;
+            } catch (error) {
+                document.getElementById('printerInfo').innerHTML = 'Error al cargar la información de la impresora';
+                console.error('Error al cargar la información:', error);
+            }
+        }
+
+        async function print() {
+            const content = document.getElementById('printContent').value;
+            const status = document.getElementById('status');
+            
+            if (!content.trim()) {
+                status.className = 'error';
+                status.textContent = 'Por favor, escribe algo para imprimir';
+                return;
+            }
+
+            try {
+                const configResponse = await fetch(`${SERVER_URL}/config`);
+                const configData = await configResponse.json();
+                const printerId = Object.keys(configData.printers)[0];
+
+                const response = await fetch(`${SERVER_URL}/print`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        printerId: printerId,
+                        content: content
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    status.className = 'success';
+                    status.textContent = '¡Impresión enviada con éxito!';
+                    document.getElementById('printContent').value = '';
+                } else {
+                    status.className = 'error';
+                    status.textContent = `Error: ${data.message}`;
+                }
+            } catch (error) {
+                status.className = 'error';
+                status.textContent = 'Error al conectar con el servidor';
+                console.error('Error al imprimir:', error);
+            }
+        }
+
+        // Cargar información de la impresora al iniciar
+        loadPrinterInfo();
+    </script>
+</body>
+</html> 
